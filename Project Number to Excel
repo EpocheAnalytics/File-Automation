@@ -1,0 +1,134 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[18]:
+
+
+# Importing required modules
+from tkinter import Tk
+from tkinter.filedialog import askdirectory
+from datetime import datetime
+import glob
+import PyPDF2 
+import re
+import io 
+import pandas as pd
+import os
+
+#iterator 
+i = 0 
+pn = pd.DataFrame(columns=['Project Number','Total Invoice'])
+print('Please choose the location of the PDFs you wish to Process.')
+
+#Selecting File Path
+path = askdirectory(title='Select Folder') # shows dialog box and return the path
+
+string_input_with_date = "12/08/2022"
+past = datetime.strptime(string_input_with_date, "%d/%m/%Y")
+present = datetime.now()
+if past.date() > present.date():
+    print('Starting PDF Processing')
+    #Grabbing all of the files and looping through them
+    for name in glob.glob((path+'/*.pdf')):
+        
+        #setting locations
+        location = name
+        location2 = (path+'/')
+
+        #Only activate print if the script fails and you want to see which file it failed on
+        #print(name)
+
+        # creating a pdf file object  
+        pdfFileObj = open(location, 'rb') 
+
+        # creating a pdf reader object 
+        pdfReader = PyPDF2.PdfFileReader(pdfFileObj) 
+
+        # printing number of pages in pdf file 
+        #print(pdfReader.numPages) 
+
+        # creating a page object 
+        pageObj = pdfReader.getPage(0) 
+
+        # extracting text from page 
+
+        ###
+        #print(pageObj.extractText()) 
+        textboi = pageObj.extractText()
+        ###
+
+        # closing the pdf file object 
+        pdfFileObj.close() 
+
+        #Turning data into dataframe
+        data = io.StringIO(textboi)
+        df = pd.read_csv(data, sep= '\n', header = 0)
+        df.columns =['Info']
+        
+        
+        h1 = df.index[df['Info'] == 'Project No:'].tolist()
+        h2 = df.index[df['Info'].str.contains('Project No:')].tolist() 
+        Invoice_index = df.index[df['Info'].str.contains('Total Invoice')].tolist()
+        Total_Invoice = "Missing Value"
+
+        if len(Invoice_index)>0:
+            Invoice_index = str(Invoice_index)
+            Invoice_index = Invoice_index.replace('[','')
+            Invoice_index = Invoice_index.replace(']','')
+            Invoice_index = int(Invoice_index)-1
+            Total_Invoice = str(df.loc[Invoice_index-1])
+            Total_Invoice = Total_Invoice.replace('Info','')
+            Total_Invoice = Total_Invoice[4:(len(Total_Invoice)-23)]
+
+
+
+
+        if len(h1)>0 or len(h2)>0:
+                    # Formatting the list into a single int
+                    if len(h1)>0:
+                        hi = str(h1)
+                        hi = hi.replace('[','')
+                        hi = hi.replace(']','')
+                        hi = int(hi)+1
+                        k = 1
+                    elif (len(h2)> 0):
+                        if (len(h1)== 0):
+                            hi = str(h2)
+                            hi = hi.replace('[','')
+                            hi = hi.replace(']','')
+                            hi = int(hi)
+                            k = 2
+
+        test = str(df.loc[hi])
+        test = test.replace('Info','')
+        test = test[4:(len(test)-23)]
+        test = test.replace('\n','')
+        test = test.replace('Project No:','')
+        Total_Invoice = Total_Invoice.replace('\n','')
+        
+        print (test)
+        print (Total_Invoice)
+        
+        pn.loc[i] = [test,Total_Invoice]
+        i = i+1
+        #list1.append(test)
+        #list2.append(Total_Invoice)
+
+        del df
+        del textboi
+            
+print('PDF Processing is Finished')
+
+
+# In[19]:
+
+
+#print(list1)
+pn
+
+
+# In[20]:
+
+
+pn.to_csv('Y:\James Emmett\Finance\Testing\Project_List_TWC.csv',index = None, header=True)
+
